@@ -30,10 +30,10 @@ func main() {
 func doSelect(db *sql.DB) {
 	g := gdo.New(db)
 
-	stmt := gdo.Statement("SELECT * FROM Test WHERE `IntCol` = @intCol AND `StringCol`=@strCol AND `StringCol` <> @intCol")
+	stmt := gdo.NewStatement("SELECT * FROM Test WHERE `IntCol` <> @intCol AND `StringCol` = @strCol AND `StringCol` <> @intCol")
 	stmt.BindParams([]sql.NamedArg{
-		sql.Named("intCol", 20),
-		sql.Named("strCol", "hello world"),
+		sql.Named("intCol", 11),
+		sql.Named("strCol", "good bye"),
 	})
 
 	r, err := g.Query(stmt)
@@ -44,13 +44,14 @@ func doSelect(db *sql.DB) {
 
 	m := r.FetchMap()
 
+	fmt.Println(r.ExecutedQuery)
 	fmt.Println(m)
 }
 
 func doInsert(db *sql.DB) {
 	g := gdo.New(db)
 
-	stmt := gdo.Statement("INSERT INTO Test (IntCol, StringCol) VALUES (@intCol, @strCol)")
+	stmt := gdo.NewStatement("INSERT INTO Test (IntCol, StringCol) VALUES (@intCol, @strCol)")
 
 	stmt.BindParams([]sql.NamedArg{
 		sql.Named("intCol", 11),
@@ -65,15 +66,20 @@ func doInsert(db *sql.DB) {
 
 	id, err := r.LastInsertId()
 
-	fmt.Println(id, err)
+	if err != nil {
+		log.Println(err)
+	}
+
+	fmt.Println(r.ExecutedQuery)
+	fmt.Println(id)
 }
 
 func doUpdate(db *sql.DB) {
 	g := gdo.New(db)
 
-	stmt := gdo.Statement("UPDATE Test SET `IntCol`=@intCol WHERE `id`=@id")
+	stmt := gdo.NewStatement("UPDATE Test SET `IntCol`=@intCol WHERE `id`=@id")
 	stmt.BindParams([]sql.NamedArg{
-		sql.Named("intCol", 1000),
+		sql.Named("intCol", 100),
 		sql.Named("id", 1),
 	})
 
@@ -85,11 +91,16 @@ func doUpdate(db *sql.DB) {
 
 	rows, err := r.RowsAffected()
 
-	fmt.Println(rows, err)
+	if err != nil {
+		log.Println(err)
+	}
+
+	fmt.Println(r.ExecutedQuery)
+	fmt.Println(rows)
 }
 
 func randomString() string {
-	N := 100
+	N := 10
 	low := 65
 	high := 122
 
