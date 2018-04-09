@@ -1,6 +1,7 @@
 package gdo
 
 import (
+	"context"
 	"database/sql"
 )
 
@@ -14,6 +15,10 @@ func New(db *sql.DB) GDO {
 }
 
 func (g GDO) Exec(s *Statement) (ExecResult, error) {
+	return g.ExecContext(context.Background(), s)
+}
+
+func (g GDO) ExecContext(ctx context.Context, s *Statement) (ExecResult, error) {
 	var result sql.Result
 	var err error
 
@@ -21,7 +26,7 @@ func (g GDO) Exec(s *Statement) (ExecResult, error) {
 		s = processStatment(s)
 	}
 
-	result, err = g.DB.Exec(s.query, s.args...)
+	result, err = g.DB.ExecContext(ctx, s.query, s.args...)
 
 	if err != nil {
 		return ExecResult{}, err
@@ -31,6 +36,10 @@ func (g GDO) Exec(s *Statement) (ExecResult, error) {
 }
 
 func (g GDO) Query(s *Statement) (QueryResult, error) {
+	return g.QueryContext(context.Background(), s)
+}
+
+func (g GDO) QueryContext(ctx context.Context, s *Statement) (QueryResult, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -38,7 +47,7 @@ func (g GDO) Query(s *Statement) (QueryResult, error) {
 		s = processStatment(s)
 	}
 
-	rows, err = g.DB.Query(s.query, s.args...)
+	rows, err = g.DB.QueryContext(ctx, s.query, s.args...)
 
 	if err != nil {
 		return QueryResult{}, err

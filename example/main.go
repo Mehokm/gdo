@@ -31,6 +31,7 @@ func doSelect(db *sql.DB) {
 	g := gdo.New(db)
 
 	stmt := gdo.NewStatement("SELECT * FROM Test WHERE `IntCol` <> @intCol AND `StringCol` = @strCol AND `StringCol` <> @intCol")
+
 	stmt.BindParams([]sql.NamedArg{
 		sql.Named("intCol", 11),
 		sql.Named("strCol", "good bye"),
