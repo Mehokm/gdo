@@ -25,6 +25,8 @@ func main() {
 	doSelect(db)
 	doInsert(db)
 	doUpdate(db)
+
+	doInsertTx(db)
 }
 
 func doSelect(db *sql.DB) {
@@ -66,6 +68,40 @@ func doInsert(db *sql.DB) {
 	}
 
 	id, err := r.LastInsertId()
+
+	if err != nil {
+		log.Println(err)
+	}
+
+	fmt.Println(r.LastExecutedQuery())
+	fmt.Println(id)
+}
+
+func doInsertTx(db *sql.DB) {
+	g := gdo.New(db)
+
+	tx, err := g.Begin()
+
+	stmt := gdo.NewStatement("INSERT INTO Test (IntCol, StringCol) VALUES (@intCol, @strCol)")
+
+	stmt.BindParams([]sql.NamedArg{
+		sql.Named("intCol", 1101),
+		sql.Named("strCol", randomString()),
+	})
+
+	r, err := tx.Exec(stmt)
+
+	if err != nil {
+		log.Println(err)
+	}
+
+	id, err := r.LastInsertId()
+
+	if err != nil {
+		log.Println(err)
+	}
+
+	err = tx.Commit()
 
 	if err != nil {
 		log.Println(err)
