@@ -5,8 +5,6 @@ import (
 	"database/sql"
 )
 
-// TODO: refactor and make DRY
-
 type Map []map[string]interface{}
 
 type queryCtxFn func(context.Context, string, ...interface{}) (*sql.Rows, error)
