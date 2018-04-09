@@ -9,10 +9,9 @@ import (
 )
 
 type Statement struct {
-	query      string
-	interQuery string
-	namedArgs  []sql.NamedArg
-	args       []interface{}
+	query     string
+	namedArgs []sql.NamedArg
+	args      []interface{}
 }
 
 // NewStatement returns a Statement
@@ -21,15 +20,55 @@ func NewStatement(query string) *Statement {
 	var args []interface{}
 
 	return &Statement{
-		query:      query,
-		interQuery: "",
-		namedArgs:  namedArgs,
-		args:       args,
+		query:     query,
+		namedArgs: namedArgs,
+		args:      args,
 	}
 }
 
-func (s *Statement) BindParams(namedArgs []sql.NamedArg) {
-	s.namedArgs = namedArgs
+func (stmt *Statement) BindParams(namedArgs []sql.NamedArg) {
+	stmt.namedArgs = namedArgs
+}
+
+func (stmt *Statement) lastExecutedQuery() string {
+	lastExecQuery := stmt.query
+
+	if len(stmt.args) > 0 {
+		index := suffixarray.New([]byte(stmt.query))
+		inds := index.Lookup([]byte("?"), -1)
+
+		sort.Ints(inds)
+
+		interQuery := stmt.query
+
+		var padding int
+		for i, ind := range inds {
+			var s string
+
+			arg := stmt.args[i]
+
+			switch arg.(type) {
+			case int:
+				s = strconv.Itoa(arg.(int))
+			case float32:
+				s = strconv.FormatFloat(float64(arg.(float32)), 'f', -1, 32)
+			case float64:
+				s = strconv.FormatFloat(arg.(float64), 'f', -1, 64)
+			case string:
+				s = "'" + arg.(string) + "'"
+			case nil:
+				s = "NULL"
+			}
+
+			interQuery = insertAt(interQuery, s, ind+padding-i)
+
+			padding += len(s)
+		}
+
+		lastExecQuery = interQuery
+	}
+
+	return lastExecQuery
 }
 
 func processStatment(s *Statement) *Statement {
@@ -63,35 +102,9 @@ func processStatment(s *Statement) *Statement {
 
 	replacedSQL := strings.NewReplacer(toReplace...).Replace(s.query)
 
-	index = suffixarray.New([]byte(replacedSQL))
-	inds := index.Lookup([]byte("?"), -1)
-
-	sort.Ints(inds)
-
-	interQuery := replacedSQL
-
-	var padding int
-	for i, ind := range inds {
-		var s string
-
-		switch args[i].(type) {
-		case int:
-			s = strconv.Itoa(args[i].(int))
-		case string:
-			s = "'" + args[i].(string) + "'"
-		case nil:
-			s = "NULL"
-		}
-
-		interQuery = insertAt(interQuery, s, ind+padding-i)
-
-		padding += len(s)
-	}
-
 	return &Statement{
-		query:      replacedSQL,
-		namedArgs:  s.namedArgs,
-		args:       args,
-		interQuery: interQuery,
+		query:     replacedSQL,
+		namedArgs: s.namedArgs,
+		args:      args,
 	}
 }

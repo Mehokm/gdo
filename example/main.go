@@ -44,7 +44,7 @@ func doSelect(db *sql.DB) {
 
 	m := r.FetchMap()
 
-	fmt.Println(r.ExecutedQuery)
+	fmt.Println(r.LastExecutedQuery())
 	fmt.Println(m)
 }
 
@@ -70,7 +70,7 @@ func doInsert(db *sql.DB) {
 		log.Println(err)
 	}
 
-	fmt.Println(r.ExecutedQuery)
+	fmt.Println(r.LastExecutedQuery())
 	fmt.Println(id)
 }
 
@@ -79,7 +79,7 @@ func doUpdate(db *sql.DB) {
 
 	stmt := gdo.NewStatement("UPDATE Test SET `IntCol`=@intCol WHERE `id`=@id")
 	stmt.BindParams([]sql.NamedArg{
-		sql.Named("intCol", 100),
+		sql.Named("intCol", 10.10),
 		sql.Named("id", 1),
 	})
 
@@ -95,7 +95,7 @@ func doUpdate(db *sql.DB) {
 		log.Println(err)
 	}
 
-	fmt.Println(r.ExecutedQuery)
+	fmt.Println(r.LastExecutedQuery())
 	fmt.Println(rows)
 }
 

@@ -3,6 +3,10 @@ package gdo
 import "database/sql"
 
 type ExecResult struct {
-	ExecutedQuery string
+	executedStmt *Statement
 	sql.Result
+}
+
+func (e ExecResult) LastExecutedQuery() string {
+	return e.executedStmt.lastExecutedQuery()
 }

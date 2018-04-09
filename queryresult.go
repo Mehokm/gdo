@@ -1,11 +1,13 @@
 package gdo
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 type QueryResult struct {
-	ExecutedQuery string
-	Rows          *sql.Rows
-	Cols          []string
+	executedStmt *Statement
+	Rows         *sql.Rows
+	Cols         []string
 }
 
 func (r QueryResult) FetchMap() Map {
@@ -33,4 +35,8 @@ func (r QueryResult) FetchMap() Map {
 	}
 
 	return m
+}
+
+func (r QueryResult) LastExecutedQuery() string {
+	return r.executedStmt.lastExecutedQuery()
 }
