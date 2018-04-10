@@ -3,7 +3,6 @@ package gdo
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"index/suffixarray"
 	"sort"
 	"strconv"
@@ -104,8 +103,6 @@ func processStatment(s *Statement) (*Statement, error) {
 		argCount++
 	}
 
-	fmt.Println(argCount)
-	fmt.Println(len(s.namedArgs))
 	if argCount != len(s.namedArgs) {
 		return nil, ErrParameterMismatch
 	}
