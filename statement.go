@@ -2,11 +2,15 @@ package gdo
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 	"index/suffixarray"
 	"sort"
 	"strconv"
 	"strings"
 )
+
+var ErrParameterMismatch = errors.New("gdo: you have a parameter mismatch")
 
 type Statement struct {
 	query     string
@@ -71,7 +75,7 @@ func (stmt *Statement) lastExecutedQuery() string {
 	return lastExecQuery
 }
 
-func processStatment(s *Statement) *Statement {
+func processStatment(s *Statement) (*Statement, error) {
 	index := suffixarray.New([]byte(s.query))
 
 	indexMap := make(map[int]sql.NamedArg)
@@ -80,18 +84,30 @@ func processStatment(s *Statement) *Statement {
 	var args []interface{}
 	var toReplace []string
 
+	var argCount int
 	for _, arg := range s.namedArgs {
 		argName := "@" + arg.Name
 
 		inds := index.Lookup([]byte(argName), -1)
+
+		if len(inds) <= 0 {
+			break
+		}
 
 		for _, ind := range inds {
 			indexMap[ind] = arg
 		}
 
 		indicies = append(indicies, inds...)
-
 		toReplace = append(toReplace, argName, "?")
+
+		argCount++
+	}
+
+	fmt.Println(argCount)
+	fmt.Println(len(s.namedArgs))
+	if argCount != len(s.namedArgs) {
+		return nil, ErrParameterMismatch
 	}
 
 	sort.Ints(indicies)
@@ -106,5 +122,5 @@ func processStatment(s *Statement) *Statement {
 		query:     replacedSQL,
 		namedArgs: s.namedArgs,
 		args:      args,
-	}
+	}, nil
 }

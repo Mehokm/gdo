@@ -5,10 +5,10 @@ import (
 	"database/sql"
 )
 
-type Map []map[string]interface{}
+type Rows []Row
+type Row map[string]interface{}
 
 type queryCtxFn func(context.Context, string, ...interface{}) (*sql.Rows, error)
-
 type execCtxFn func(context.Context, string, ...interface{}) (sql.Result, error)
 
 type GDO struct {
@@ -45,6 +45,14 @@ func (g GDO) QueryContext(ctx context.Context, s *Statement) (QueryResult, error
 	return doQueryCtx(g.DB.QueryContext, ctx, s)
 }
 
+func (g GDO) QueryRow(s *Statement) QueryRowResult {
+	return g.QueryRowContext(context.Background(), s)
+}
+
+func (g GDO) QueryRowContext(ctx context.Context, s *Statement) QueryRowResult {
+	return doQueryRowCtx(g.DB.QueryContext, ctx, s)
+}
+
 func insertAt(str, toIns string, pos int) string {
 	return str[:pos] + toIns + str[pos+1:]
 }
@@ -54,7 +62,11 @@ func doQueryCtx(fn queryCtxFn, ctx context.Context, s *Statement) (QueryResult, 
 	var err error
 
 	if len(s.namedArgs) > 0 {
-		s = processStatment(s)
+		s, err = processStatment(s)
+
+		if err != nil {
+			return QueryResult{}, err
+		}
 	}
 
 	rows, err = fn(ctx, s.query, s.args...)
@@ -69,7 +81,17 @@ func doQueryCtx(fn queryCtxFn, ctx context.Context, s *Statement) (QueryResult, 
 		return QueryResult{}, err
 	}
 
-	return QueryResult{executedStmt: s, Rows: rows, Cols: cols}, nil
+	return QueryResult{GDOResult: GDOResult{executedStmt: s}, Rows: rows, Cols: cols}, nil
+}
+
+func doQueryRowCtx(fn queryCtxFn, ctx context.Context, s *Statement) QueryRowResult {
+	rs, err := doQueryCtx(fn, ctx, s)
+
+	if err != nil {
+		return QueryRowResult{err: err}
+	}
+
+	return QueryRowResult{QueryResult: rs, err: nil}
 }
 
 func doExecCtx(fn execCtxFn, ctx context.Context, s *Statement) (ExecResult, error) {
@@ -77,7 +99,11 @@ func doExecCtx(fn execCtxFn, ctx context.Context, s *Statement) (ExecResult, err
 	var err error
 
 	if len(s.namedArgs) > 0 {
-		s = processStatment(s)
+		s, err = processStatment(s)
+
+		if err != nil {
+			return ExecResult{}, err
+		}
 	}
 
 	result, err = fn(ctx, s.query, s.args...)
@@ -86,5 +112,5 @@ func doExecCtx(fn execCtxFn, ctx context.Context, s *Statement) (ExecResult, err
 		return ExecResult{}, err
 	}
 
-	return ExecResult{executedStmt: s, Result: result}, nil
+	return ExecResult{GDOResult: GDOResult{executedStmt: s}, Result: result}, nil
 }

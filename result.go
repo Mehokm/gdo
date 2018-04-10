@@ -1,0 +1,76 @@
+package gdo
+
+import (
+	"database/sql"
+)
+
+type GDOResult struct {
+	executedStmt *Statement
+}
+
+type ExecResult struct {
+	GDOResult
+	sql.Result
+}
+
+type QueryResult struct {
+	GDOResult
+	Rows *sql.Rows
+	Cols []string
+}
+
+type QueryRowResult struct {
+	QueryResult
+	err error
+}
+
+func (r QueryResult) FetchRows() Rows {
+	var m Rows
+
+	result := make([]sql.RawBytes, len(r.Cols))
+	rawResult := make([]interface{}, len(r.Cols))
+
+	for i := range rawResult {
+		rawResult[i] = &result[i]
+	}
+
+	defer r.Rows.Close()
+
+	for r.Rows.Next() {
+		assoc := make(map[string]interface{})
+
+		r.Rows.Scan(rawResult...)
+
+		for i := range result {
+			assoc[r.Cols[i]] = string(result[i])
+		}
+
+		m = append(m, assoc)
+	}
+
+	return m
+}
+
+func (qrr QueryRowResult) FetchRow() Row {
+	var r Row
+
+	if qrr.Rows == nil {
+		return r
+	}
+
+	rs := qrr.FetchRows()
+
+	if len(rs) < 1 {
+		return r
+	}
+
+	return rs[0]
+}
+
+func (qrr QueryRowResult) Error() error {
+	return qrr.err
+}
+
+func (r GDOResult) LastExecutedQuery() string {
+	return r.executedStmt.lastExecutedQuery()
+}

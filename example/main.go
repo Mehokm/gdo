@@ -22,11 +22,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	doSelect(db)
 	doInsert(db)
+	doInsertTx(db)
 	doUpdate(db)
 
-	doInsertTx(db)
+	doSelect(db)
+	doSelectRow(db)
 }
 
 func doSelect(db *sql.DB) {
@@ -43,9 +44,33 @@ func doSelect(db *sql.DB) {
 
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
-	m := r.FetchMap()
+	m := r.FetchRows()
+
+	fmt.Println(r.LastExecutedQuery())
+	fmt.Println(m)
+}
+
+func doSelectRow(db *sql.DB) {
+	g := gdo.New(db)
+
+	stmt := gdo.NewStatement("SELECT * FROM Test WHERE `id`=@id")
+
+	stmt.BindParams([]sql.NamedArg{
+		sql.Named("id", 1),
+		sql.Named("blah", 1),
+	})
+
+	r := g.QueryRow(stmt)
+
+	if r.Error() != nil {
+		log.Println(r.Error())
+		return
+	}
+
+	m := r.FetchRow()
 
 	fmt.Println(r.LastExecutedQuery())
 	fmt.Println(m)
@@ -65,12 +90,14 @@ func doInsert(db *sql.DB) {
 
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
 	id, err := r.LastInsertId()
 
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
 	fmt.Println(r.LastExecutedQuery())
@@ -93,18 +120,21 @@ func doInsertTx(db *sql.DB) {
 
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
 	id, err := r.LastInsertId()
 
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
 	err = tx.Commit()
 
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
 	fmt.Println(r.LastExecutedQuery())
@@ -124,12 +154,14 @@ func doUpdate(db *sql.DB) {
 
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
 	rows, err := r.RowsAffected()
 
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
 	fmt.Println(r.LastExecutedQuery())

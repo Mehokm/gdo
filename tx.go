@@ -24,3 +24,11 @@ func (tx Transaction) Query(s *Statement) (QueryResult, error) {
 func (tx Transaction) QueryContext(ctx context.Context, s *Statement) (QueryResult, error) {
 	return doQueryCtx(tx.Tx.QueryContext, ctx, s)
 }
+
+func (tx Transaction) QueryRow(s *Statement) QueryRowResult {
+	return tx.QueryRowContext(context.Background(), s)
+}
+
+func (tx Transaction) QueryRowContext(ctx context.Context, s *Statement) QueryRowResult {
+	return doQueryRowCtx(tx.Tx.QueryContext, ctx, s)
+}
