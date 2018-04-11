@@ -78,17 +78,11 @@ func doQueryCtx(fn queryCtxFn, ctx context.Context, s *Statement) (QueryResult, 
 		return QueryResult{}, err
 	}
 
-	colTypes, err := rows.ColumnTypes()
-
-	if err != nil {
-		return QueryResult{}, err
-	}
-
 	return QueryResult{
 		GDOResult: GDOResult{
 			executedStmt: s,
 		},
-		Rows: rows, Cols: cols, colTypes: colTypes,
+		Rows: rows, Cols: cols,
 	}, nil
 }
 

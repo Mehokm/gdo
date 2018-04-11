@@ -5,10 +5,11 @@ import (
 	"errors"
 	"math"
 	"strconv"
+	"time"
 )
 
 var ErrColNotFound = errors.New("gdo: column not found")
-var ErrCannotConvert = errors.New("gdo: cannot convert value to type int")
+var ErrCannotConvert = errors.New("gdo: cannot convert value to type")
 
 type Rows []Row
 type Row map[string]interface{}
@@ -185,4 +186,41 @@ func (r Row) Bytes(col string) ([]byte, error) {
 	}
 
 	return v, nil
+}
+
+func (r Row) Time(col string) (time.Time, error) {
+	val, ok := r[col]
+
+	if !ok {
+		return time.Time{}, ErrColNotFound
+	}
+
+	var v time.Time
+	var err error
+
+	switch val.(type) {
+	case []byte:
+		vv := string(val.([]byte))
+
+		v, err = time.Parse(getTimeFormat(vv), vv)
+
+		if err != nil {
+			return v, err
+		}
+	default:
+		return time.Time{}, ErrCannotConvert
+	}
+
+	return v, nil
+}
+
+func getTimeFormat(s string) string {
+	// mysql format using go specific numbers
+	format := "2006-01-02 15:04:05.999999"
+
+	if len(s) > len(format) {
+		return ""
+	}
+
+	return format[:len(s)]
 }

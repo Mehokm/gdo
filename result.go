@@ -15,9 +15,8 @@ type ExecResult struct {
 
 type QueryResult struct {
 	GDOResult
-	Rows     *sql.Rows
-	Cols     []string
-	colTypes []*sql.ColumnType
+	Rows *sql.Rows
+	Cols []string
 }
 
 type QueryRowResult struct {
