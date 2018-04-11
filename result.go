@@ -15,8 +15,9 @@ type ExecResult struct {
 
 type QueryResult struct {
 	GDOResult
-	Rows *sql.Rows
-	Cols []string
+	Rows     *sql.Rows
+	Cols     []string
+	colTypes []*sql.ColumnType
 }
 
 type QueryRowResult struct {
@@ -27,11 +28,11 @@ type QueryRowResult struct {
 func (r QueryResult) FetchRows() Rows {
 	var m Rows
 
-	result := make([]sql.RawBytes, len(r.Cols))
-	rawResult := make([]interface{}, len(r.Cols))
+	results := make([]interface{}, len(r.Cols))
+	rawResults := make([]interface{}, len(r.Cols))
 
-	for i := range rawResult {
-		rawResult[i] = &result[i]
+	for i := range rawResults {
+		rawResults[i] = &results[i]
 	}
 
 	defer r.Rows.Close()
@@ -39,10 +40,10 @@ func (r QueryResult) FetchRows() Rows {
 	for r.Rows.Next() {
 		assoc := make(map[string]interface{})
 
-		r.Rows.Scan(rawResult...)
+		r.Rows.Scan(rawResults...)
 
-		for i := range result {
-			assoc[r.Cols[i]] = string(result[i])
+		for i := range results {
+			assoc[r.Cols[i]] = results[i]
 		}
 
 		m = append(m, assoc)

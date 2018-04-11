@@ -22,11 +22,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	doInsert(db)
-	doInsertTx(db)
-	doUpdate(db)
+	// doInsert(db)
+	// doInsertTx(db)
+	// doUpdate(db)
 
-	doSelect(db)
+	// doSelect(db)
 	doSelectRow(db)
 }
 
@@ -59,8 +59,7 @@ func doSelectRow(db *sql.DB) {
 	stmt := gdo.NewStatement("SELECT * FROM Test WHERE `id`=@id")
 
 	stmt.BindParams([]sql.NamedArg{
-		sql.Named("id", 1),
-		sql.Named("blah", 1),
+		sql.Named("id", 2),
 	})
 
 	r := g.QueryRow(stmt)

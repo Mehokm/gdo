@@ -5,9 +5,6 @@ import (
 	"database/sql"
 )
 
-type Rows []Row
-type Row map[string]interface{}
-
 type queryCtxFn func(context.Context, string, ...interface{}) (*sql.Rows, error)
 type execCtxFn func(context.Context, string, ...interface{}) (sql.Result, error)
 
@@ -81,7 +78,18 @@ func doQueryCtx(fn queryCtxFn, ctx context.Context, s *Statement) (QueryResult, 
 		return QueryResult{}, err
 	}
 
-	return QueryResult{GDOResult: GDOResult{executedStmt: s}, Rows: rows, Cols: cols}, nil
+	colTypes, err := rows.ColumnTypes()
+
+	if err != nil {
+		return QueryResult{}, err
+	}
+
+	return QueryResult{
+		GDOResult: GDOResult{
+			executedStmt: s,
+		},
+		Rows: rows, Cols: cols, colTypes: colTypes,
+	}, nil
 }
 
 func doQueryRowCtx(fn queryCtxFn, ctx context.Context, s *Statement) QueryRowResult {
@@ -112,5 +120,10 @@ func doExecCtx(fn execCtxFn, ctx context.Context, s *Statement) (ExecResult, err
 		return ExecResult{}, err
 	}
 
-	return ExecResult{GDOResult: GDOResult{executedStmt: s}, Result: result}, nil
+	return ExecResult{
+		GDOResult: GDOResult{
+			executedStmt: s,
+		},
+		Result: result,
+	}, nil
 }
