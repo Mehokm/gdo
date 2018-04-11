@@ -22,11 +22,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// doInsert(db)
-	// doInsertTx(db)
-	// doUpdate(db)
+	doInsert(db)
+	doInsertTx(db)
+	doUpdate(db)
 
-	// doSelect(db)
+	doSelect(db)
 	doSelectRow(db)
 }
 
