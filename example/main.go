@@ -30,6 +30,7 @@ func main() {
 	doSelectRow(db)
 
 	doPrepare(db)
+	doPrepare2(db)
 }
 
 func doSelect(db *sql.DB) {
@@ -176,6 +177,25 @@ func doPrepare(db *sql.DB) {
 	p.BindNamedArgs([]sql.NamedArg{
 		sql.Named("intCol", 11),
 	})
+
+	p.BindNamedArg(sql.Named("strCol", "hello world"))
+
+	fmt.Println(p.QueryRow().FetchRow().String("StringCol"))
+	fmt.Println(p.QueryRow().FetchRow().Int("IntCol"))
+
+	p.Close()
+}
+
+func doPrepare2(db *sql.DB) {
+	g := gdo.New(db)
+
+	p, _ := g.Prepare("SELECT * FROM Test WHERE `IntCol` <> ? AND `StringCol` = ? AND `StringCol` <> ?")
+
+	p.BindArgs([]interface{}{
+		11,
+		"hello world",
+	})
+	p.BindArg(11)
 
 	p.BindNamedArg(sql.Named("strCol", "hello world"))
 

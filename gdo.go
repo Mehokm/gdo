@@ -62,32 +62,44 @@ func (g GDO) QueryRowContext(ctx context.Context, s *Statement) QueryRowResult {
 }
 
 func (g GDO) prepareContext(ctx context.Context, query string) (*PreparedStatement, error) {
-	namedArgMap := make(map[string][]int)
+	replacedSQL := query
+	var qna queryNamedArgs
 
-	var toReplace []string
+	isParamertized := !strings.Contains(replacedSQL, "?")
 
-	index := suffixarray.New([]byte(query))
-	inds := index.Lookup([]byte("@"), -1)
+	if isParamertized {
+		namedArgMap := make(map[string][]int)
 
-	sort.Ints(inds)
+		var toReplace []string
 
-	for i, ind := range inds {
-		var argName string
+		index := suffixarray.New([]byte(query))
+		inds := index.Lookup([]byte("@"), -1)
 
-		ii := strings.Index(query[ind:], " ")
+		sort.Ints(inds)
 
-		if ii < 0 {
-			argName = query[ind:]
-		} else {
-			argName = query[ind:][:ii]
+		for i, ind := range inds {
+			var argName string
+
+			ii := strings.Index(query[ind:], " ")
+
+			if ii < 0 {
+				argName = query[ind:]
+			} else {
+				argName = query[ind:][:ii]
+			}
+
+			namedArgMap[argName] = append(namedArgMap[argName], i)
+
+			toReplace = append(toReplace, argName, "?")
 		}
 
-		namedArgMap[argName] = append(namedArgMap[argName], i)
+		replacedSQL = strings.NewReplacer(toReplace...).Replace(query)
 
-		toReplace = append(toReplace, argName, "?")
+		qna = queryNamedArgs{
+			dict:  namedArgMap,
+			total: len(inds),
+		}
 	}
-
-	replacedSQL := strings.NewReplacer(toReplace...).Replace(query)
 
 	ps, err := g.DB.PrepareContext(ctx, replacedSQL)
 
@@ -98,14 +110,12 @@ func (g GDO) prepareContext(ctx context.Context, query string) (*PreparedStateme
 	return &PreparedStatement{
 		Stmt: ps,
 		Statement: &Statement{
-			query:     replacedSQL,
-			namedArgs: make([]sql.NamedArg, 0),
-			args:      make([]interface{}, 0),
+			query:          replacedSQL,
+			namedArgs:      make([]sql.NamedArg, 0),
+			args:           make([]interface{}, 0),
+			isParamertized: isParamertized,
 		},
-		queryNamedArgs: queryNamedArgs{
-			dict:  namedArgMap,
-			total: len(inds),
-		},
+		queryNamedArgs: qna,
 	}, nil
 }
 
@@ -113,7 +123,7 @@ func doQueryCtx(fn queryCtxFn, ctx context.Context, s *Statement) (QueryResult, 
 	var rows *sql.Rows
 	var err error
 
-	if len(s.namedArgs) > 0 {
+	if s.isParamertized && len(s.namedArgs) > 0 {
 		s, err = processStatment(s)
 
 		if err != nil {
@@ -155,7 +165,7 @@ func doExecCtx(fn execCtxFn, ctx context.Context, s *Statement) (ExecResult, err
 	var result sql.Result
 	var err error
 
-	if len(s.namedArgs) > 0 {
+	if s.isParamertized && len(s.namedArgs) > 0 {
 		s, err = processStatment(s)
 
 		if err != nil {
