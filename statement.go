@@ -29,8 +29,12 @@ func NewStatement(query string) *Statement {
 	}
 }
 
-func (stmt *Statement) BindParams(namedArgs []sql.NamedArg) {
+func (stmt *Statement) BindNamedArgs(namedArgs []sql.NamedArg) {
 	stmt.namedArgs = namedArgs
+}
+
+func (stmt *Statement) BindNamedArg(namedArg sql.NamedArg) {
+	stmt.namedArgs = append(stmt.namedArgs, namedArg)
 }
 
 func (stmt *Statement) lastExecutedQuery() string {
@@ -120,4 +124,8 @@ func processStatment(s *Statement) (*Statement, error) {
 		namedArgs: s.namedArgs,
 		args:      args,
 	}, nil
+}
+
+func insertAt(str, toIns string, pos int) string {
+	return str[:pos] + toIns + str[pos+1:]
 }

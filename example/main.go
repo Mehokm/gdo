@@ -28,6 +28,8 @@ func main() {
 
 	doSelect(db)
 	doSelectRow(db)
+
+	doPrepare(db)
 }
 
 func doSelect(db *sql.DB) {
@@ -35,7 +37,7 @@ func doSelect(db *sql.DB) {
 
 	stmt := gdo.NewStatement("SELECT * FROM Test WHERE `IntCol` <> @intCol AND `StringCol` = @strCol AND `StringCol` <> @intCol")
 
-	stmt.BindParams([]sql.NamedArg{
+	stmt.BindNamedArgs([]sql.NamedArg{
 		sql.Named("intCol", 11),
 		sql.Named("strCol", "good bye"),
 	})
@@ -58,14 +60,14 @@ func doSelectRow(db *sql.DB) {
 
 	stmt := gdo.NewStatement("SELECT * FROM Test WHERE `id`=@id")
 
-	stmt.BindParams([]sql.NamedArg{
+	stmt.BindNamedArgs([]sql.NamedArg{
 		sql.Named("id", 2),
 	})
 
 	r := g.QueryRow(stmt)
 
-	if r.Error() != nil {
-		log.Println(r.Error())
+	if r.LastError() != nil {
+		log.Println(r.LastError())
 		return
 	}
 
@@ -80,7 +82,7 @@ func doInsert(db *sql.DB) {
 
 	stmt := gdo.NewStatement("INSERT INTO Test (IntCol, StringCol) VALUES (@intCol, @strCol)")
 
-	stmt.BindParams([]sql.NamedArg{
+	stmt.BindNamedArgs([]sql.NamedArg{
 		sql.Named("intCol", 11),
 		sql.Named("strCol", randomString()),
 	})
@@ -110,7 +112,7 @@ func doInsertTx(db *sql.DB) {
 
 	stmt := gdo.NewStatement("INSERT INTO Test (IntCol, StringCol) VALUES (@intCol, @strCol)")
 
-	stmt.BindParams([]sql.NamedArg{
+	stmt.BindNamedArgs([]sql.NamedArg{
 		sql.Named("intCol", 1101),
 		sql.Named("strCol", randomString()),
 	})
@@ -144,7 +146,7 @@ func doUpdate(db *sql.DB) {
 	g := gdo.New(db)
 
 	stmt := gdo.NewStatement("UPDATE Test SET `IntCol`=@intCol WHERE `id`=@id")
-	stmt.BindParams([]sql.NamedArg{
+	stmt.BindNamedArgs([]sql.NamedArg{
 		sql.Named("intCol", 10.10),
 		sql.Named("id", 1),
 	})
@@ -165,6 +167,22 @@ func doUpdate(db *sql.DB) {
 
 	fmt.Println(r.LastExecutedQuery())
 	fmt.Println(rows)
+}
+
+func doPrepare(db *sql.DB) {
+	g := gdo.New(db)
+
+	p, _ := g.Prepare("SELECT * FROM Test WHERE `IntCol` <> @intCol AND `StringCol` = @strCol AND `StringCol` <> @intCol")
+	p.BindNamedArgs([]sql.NamedArg{
+		sql.Named("intCol", 11),
+	})
+
+	p.BindNamedArg(sql.Named("strCol", "hello world"))
+
+	fmt.Println(p.QueryRow().FetchRow().String("StringCol"))
+	fmt.Println(p.QueryRow().FetchRow().Int("IntCol"))
+
+	p.Close()
 }
 
 func randomString() string {

@@ -67,7 +67,7 @@ func (qrr QueryRowResult) FetchRow() Row {
 	return rs[0]
 }
 
-func (qrr QueryRowResult) Error() error {
+func (qrr QueryRowResult) LastError() error {
 	return qrr.err
 }
 

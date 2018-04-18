@@ -3,6 +3,9 @@ package gdo
 import (
 	"context"
 	"database/sql"
+	"index/suffixarray"
+	"sort"
+	"strings"
 )
 
 type queryCtxFn func(context.Context, string, ...interface{}) (*sql.Rows, error)
@@ -24,6 +27,14 @@ func (g GDO) BeginTx(ctx context.Context, opts *sql.TxOptions) (Transaction, err
 	tx, err := g.DB.BeginTx(ctx, opts)
 
 	return Transaction{tx}, err
+}
+
+func (g GDO) Prepare(query string) (*PreparedStatement, error) {
+	return g.prepareContext(context.Background(), query)
+}
+
+func (g GDO) PrepareContext(ctx context.Context, query string) (*PreparedStatement, error) {
+	return g.prepareContext(ctx, query)
 }
 
 func (g GDO) Exec(s *Statement) (ExecResult, error) {
@@ -50,8 +61,52 @@ func (g GDO) QueryRowContext(ctx context.Context, s *Statement) QueryRowResult {
 	return doQueryRowCtx(g.DB.QueryContext, ctx, s)
 }
 
-func insertAt(str, toIns string, pos int) string {
-	return str[:pos] + toIns + str[pos+1:]
+func (g GDO) prepareContext(ctx context.Context, query string) (*PreparedStatement, error) {
+	namedArgMap := make(map[string][]int)
+
+	var toReplace []string
+
+	index := suffixarray.New([]byte(query))
+	inds := index.Lookup([]byte("@"), -1)
+
+	sort.Ints(inds)
+
+	for i, ind := range inds {
+		var argName string
+
+		ii := strings.Index(query[ind:], " ")
+
+		if ii < 0 {
+			argName = query[ind:]
+		} else {
+			argName = query[ind:][:ii]
+		}
+
+		namedArgMap[argName] = append(namedArgMap[argName], i)
+
+		toReplace = append(toReplace, argName, "?")
+	}
+
+	replacedSQL := strings.NewReplacer(toReplace...).Replace(query)
+
+	ps, err := g.DB.PrepareContext(ctx, replacedSQL)
+
+	if err != nil {
+		return &PreparedStatement{}, err
+	}
+
+	return &PreparedStatement{
+		Stmt: ps,
+		Statement: &Statement{
+			query:     replacedSQL,
+			namedArgs: make([]sql.NamedArg, 0),
+			args:      make([]interface{}, 0),
+		},
+		queryNamedArgs: queryNamedArgs{
+			dict:  namedArgMap,
+			total: len(inds),
+		},
+	}, nil
 }
 
 func doQueryCtx(fn queryCtxFn, ctx context.Context, s *Statement) (QueryResult, error) {
