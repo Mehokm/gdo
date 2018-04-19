@@ -115,7 +115,7 @@ func processPreparedStatement(ps *PreparedStatement) (*PreparedStatement, error)
 	args := make([]interface{}, ps.queryNamedArgs.total)
 
 	for _, namedArg := range ps.namedArgs {
-		inds := ps.queryNamedArgs.dict["@"+namedArg.Name]
+		inds := ps.queryNamedArgs.dict[namedArg.Name]
 
 		for _, k := range inds {
 			args[k] = namedArg.Value

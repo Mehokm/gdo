@@ -101,7 +101,7 @@ func processStatment(s *Statement) (*Statement, error) {
 
 	var argCount int
 	for _, arg := range s.namedArgs {
-		argName := "@" + arg.Name
+		argName := delim + arg.Name + delim
 
 		inds := index.Lookup([]byte(argName), -1)
 
@@ -111,9 +111,10 @@ func processStatment(s *Statement) (*Statement, error) {
 
 		for _, ind := range inds {
 			indexMap[ind] = arg
+
+			indicies = append(indicies, ind)
 		}
 
-		indicies = append(indicies, inds...)
 		toReplace = append(toReplace, argName, "?")
 
 		argCount++

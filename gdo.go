@@ -8,15 +8,17 @@ import (
 	"strings"
 )
 
-type queryCtxFn func(context.Context, string, ...interface{}) (*sql.Rows, error)
-type execCtxFn func(context.Context, string, ...interface{}) (sql.Result, error)
+const delim = ":"
+
+type queryCtxFunc func(context.Context, string, ...interface{}) (*sql.Rows, error)
+type execCtxFunc func(context.Context, string, ...interface{}) (sql.Result, error)
 
 type GDO struct {
 	*sql.DB
 }
 
-func New(db *sql.DB) GDO {
-	return GDO{db}
+func New(db *sql.DB) *GDO {
+	return &GDO{db}
 }
 
 func (g GDO) Begin() (Transaction, error) {
@@ -73,31 +75,37 @@ func (g GDO) prepareContext(ctx context.Context, query string) (*PreparedStateme
 		var toReplace []string
 
 		index := suffixarray.New([]byte(query))
-		inds := index.Lookup([]byte("@"), -1)
+		inds := index.Lookup([]byte(":"), -1)
 
 		sort.Ints(inds)
 
-		for i, ind := range inds {
+		// TODO: should check if an even amount
+		// throw error about malformed parameters
+
+		l := len(query)
+		k := 0
+		for i := 0; i < len(inds)-1; i += 2 {
+			j, jj := inds[i], inds[i+1]
+
 			var argName string
-
-			ii := strings.Index(query[ind:], " ")
-
-			if ii < 0 {
-				argName = query[ind:]
+			if jj < l {
+				argName = query[j+1 : jj]
 			} else {
-				argName = query[ind:][:ii]
+				argName = query[j+1:]
 			}
 
-			namedArgMap[argName] = append(namedArgMap[argName], i)
+			namedArgMap[argName] = append(namedArgMap[argName], k)
 
-			toReplace = append(toReplace, argName, "?")
+			toReplace = append(toReplace, delim+argName+delim, "?")
+
+			k++
 		}
 
 		replacedSQL = strings.NewReplacer(toReplace...).Replace(query)
 
 		qna = queryNamedArgs{
 			dict:  namedArgMap,
-			total: len(inds),
+			total: len(inds) / 2, // assume even because double delim
 		}
 	}
 
@@ -119,7 +127,7 @@ func (g GDO) prepareContext(ctx context.Context, query string) (*PreparedStateme
 	}, nil
 }
 
-func doQueryCtx(fn queryCtxFn, ctx context.Context, s *Statement) (QueryResult, error) {
+func doQueryCtx(fn queryCtxFunc, ctx context.Context, s *Statement) (QueryResult, error) {
 	var rows *sql.Rows
 	var err error
 
@@ -151,7 +159,7 @@ func doQueryCtx(fn queryCtxFn, ctx context.Context, s *Statement) (QueryResult, 
 	}, nil
 }
 
-func doQueryRowCtx(fn queryCtxFn, ctx context.Context, s *Statement) QueryRowResult {
+func doQueryRowCtx(fn queryCtxFunc, ctx context.Context, s *Statement) QueryRowResult {
 	rs, err := doQueryCtx(fn, ctx, s)
 
 	if err != nil {
@@ -161,7 +169,7 @@ func doQueryRowCtx(fn queryCtxFn, ctx context.Context, s *Statement) QueryRowRes
 	return QueryRowResult{QueryResult: rs, err: nil}
 }
 
-func doExecCtx(fn execCtxFn, ctx context.Context, s *Statement) (ExecResult, error) {
+func doExecCtx(fn execCtxFunc, ctx context.Context, s *Statement) (ExecResult, error) {
 	var result sql.Result
 	var err error
 

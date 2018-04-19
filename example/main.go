@@ -36,11 +36,12 @@ func main() {
 func doSelect(db *sql.DB) {
 	g := gdo.New(db)
 
-	stmt := gdo.NewStatement("SELECT * FROM Test WHERE `IntCol` <> @intCol AND `StringCol` = @strCol AND `StringCol` <> @intCol")
+	stmt := gdo.NewStatement("SELECT * FROM Test WHERE `IntCol` <> :col_int: AND `StringCol` = :col_str: AND `StringCol` <> :col:")
 
 	stmt.BindNamedArgs([]sql.NamedArg{
-		sql.Named("intCol", 11),
-		sql.Named("strCol", "good bye"),
+		sql.Named("col_str", "good bye"),
+		sql.Named("col", 10),
+		sql.Named("col_int", 11),
 	})
 
 	r, err := g.Query(stmt)
@@ -59,7 +60,7 @@ func doSelect(db *sql.DB) {
 func doSelectRow(db *sql.DB) {
 	g := gdo.New(db)
 
-	stmt := gdo.NewStatement("SELECT * FROM Test WHERE `id`=@id")
+	stmt := gdo.NewStatement("SELECT * FROM Test WHERE `id`=:id:")
 
 	stmt.BindNamedArgs([]sql.NamedArg{
 		sql.Named("id", 2),
@@ -81,7 +82,7 @@ func doSelectRow(db *sql.DB) {
 func doInsert(db *sql.DB) {
 	g := gdo.New(db)
 
-	stmt := gdo.NewStatement("INSERT INTO Test (IntCol, StringCol) VALUES (@intCol, @strCol)")
+	stmt := gdo.NewStatement("INSERT INTO Test (IntCol, StringCol) VALUES (:intCol:, :strCol:)")
 
 	stmt.BindNamedArgs([]sql.NamedArg{
 		sql.Named("intCol", 11),
@@ -111,7 +112,7 @@ func doInsertTx(db *sql.DB) {
 
 	tx, err := g.Begin()
 
-	stmt := gdo.NewStatement("INSERT INTO Test (IntCol, StringCol) VALUES (@intCol, @strCol)")
+	stmt := gdo.NewStatement("INSERT INTO Test (IntCol, StringCol) VALUES (:intCol:, :strCol:)")
 
 	stmt.BindNamedArgs([]sql.NamedArg{
 		sql.Named("intCol", 1101),
@@ -146,7 +147,7 @@ func doInsertTx(db *sql.DB) {
 func doUpdate(db *sql.DB) {
 	g := gdo.New(db)
 
-	stmt := gdo.NewStatement("UPDATE Test SET `IntCol`=@intCol WHERE `id`=@id")
+	stmt := gdo.NewStatement("UPDATE Test SET `IntCol`=:intCol: WHERE `id`=:id:")
 	stmt.BindNamedArgs([]sql.NamedArg{
 		sql.Named("intCol", 10.10),
 		sql.Named("id", 1),
@@ -173,15 +174,17 @@ func doUpdate(db *sql.DB) {
 func doPrepare(db *sql.DB) {
 	g := gdo.New(db)
 
-	p, _ := g.Prepare("SELECT * FROM Test WHERE `IntCol` <> @intCol AND `StringCol` = @strCol AND `StringCol` <> @intCol")
+	p, _ := g.Prepare("SELECT * FROM Test WHERE `IntCol` <> :col_int: AND `StringCol` = :col_str: AND `StringCol` <> :col:")
 	p.BindNamedArgs([]sql.NamedArg{
-		sql.Named("intCol", 11),
+		sql.Named("col_str", "good bye"),
+		sql.Named("col", 10),
 	})
+	p.BindNamedArg(sql.Named("col_int", 11))
 
-	p.BindNamedArg(sql.Named("strCol", "hello world"))
+	rs := p.QueryRow()
 
-	fmt.Println(p.QueryRow().FetchRow().String("StringCol"))
-	fmt.Println(p.QueryRow().FetchRow().Int("IntCol"))
+	fmt.Println(rs.LastExecutedQuery())
+	fmt.Println(rs.FetchRow())
 
 	p.Close()
 }
