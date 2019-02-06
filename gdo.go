@@ -21,11 +21,11 @@ func New(db *sql.DB) *GDO {
 	return &GDO{db}
 }
 
-func (g GDO) Begin() (Transaction, error) {
-	return g.BeginTx(context.Background(), nil)
+func (g GDO) BeginTx() (Transaction, error) {
+	return g.BeginTxContext(context.Background(), nil)
 }
 
-func (g GDO) BeginTx(ctx context.Context, opts *sql.TxOptions) (Transaction, error) {
+func (g GDO) BeginTxContext(ctx context.Context, opts *sql.TxOptions) (Transaction, error) {
 	tx, err := g.DB.BeginTx(ctx, opts)
 
 	return Transaction{tx}, err

@@ -3,10 +3,11 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"gdo"
 	"log"
 	"math/rand"
 	"time"
+
+	"github.com/Mehokm/gdo"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -110,7 +111,7 @@ func doInsert(db *sql.DB) {
 func doInsertTx(db *sql.DB) {
 	g := gdo.New(db)
 
-	tx, err := g.Begin()
+	tx, err := g.BeginTx()
 
 	stmt := gdo.NewStatement("INSERT INTO Test (IntCol, StringCol) VALUES (:intCol:, :strCol:)")
 
