@@ -6,6 +6,7 @@ import (
 	"index/suffixarray"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 const delim = ":"
@@ -67,9 +68,9 @@ func (g GDO) prepareContext(ctx context.Context, query string) (*PreparedStateme
 	replacedSQL := query
 	var qna queryNamedArgs
 
-	isParamertized := !strings.Contains(replacedSQL, "?")
+	isParameterized := checkIsParameterized(replacedSQL)
 
-	if isParamertized {
+	if isParameterized {
 		namedArgMap := make(map[string][]int)
 
 		var toReplace []string
@@ -118,10 +119,10 @@ func (g GDO) prepareContext(ctx context.Context, query string) (*PreparedStateme
 	return &PreparedStatement{
 		Stmt: ps,
 		Statement: &Statement{
-			query:          replacedSQL,
-			namedArgs:      make([]sql.NamedArg, 0),
-			args:           make([]interface{}, 0),
-			isParamertized: isParamertized,
+			query:           replacedSQL,
+			namedArgs:       make([]sql.NamedArg, 0),
+			args:            make([]interface{}, 0),
+			isParameterized: isParameterized,
 		},
 		queryNamedArgs: qna,
 	}, nil
@@ -131,7 +132,7 @@ func doQueryCtx(fn queryCtxFunc, ctx context.Context, s *Statement) (QueryResult
 	var rows *sql.Rows
 	var err error
 
-	if s.isParamertized && len(s.namedArgs) > 0 {
+	if s.isParameterized && len(s.namedArgs) > 0 {
 		s, err = processStatment(s)
 
 		if err != nil {
@@ -173,7 +174,7 @@ func doExecCtx(fn execCtxFunc, ctx context.Context, s *Statement) (ExecResult, e
 	var result sql.Result
 	var err error
 
-	if s.isParamertized && len(s.namedArgs) > 0 {
+	if s.isParameterized && len(s.namedArgs) > 0 {
 		s, err = processStatment(s)
 
 		if err != nil {
@@ -193,4 +194,22 @@ func doExecCtx(fn execCtxFunc, ctx context.Context, s *Statement) (ExecResult, e
 		},
 		Result: result,
 	}, nil
+}
+
+func checkIsParameterized(query string) bool {
+	indexFirst := strings.Index(query, ":")
+
+	if indexFirst < 0 {
+		return false
+	}
+
+	for i := indexFirst + 1; i < len(query); i++ {
+		if unicode.IsSpace(rune(query[i])) {
+			return false
+		} else if query[i] == ':' {
+			return true
+		}
+	}
+
+	return false
 }
