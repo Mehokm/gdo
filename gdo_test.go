@@ -54,6 +54,46 @@ func TestPrepareContext(t *testing.T) {
 				total: 2,
 			},
 		},
+		map[string]interface{}{
+			"query":         "SELECT * FROM Foo WHERE id=:b: AND bar=:a",
+			"expectedQuery": "SELECT * FROM Foo WHERE id=? AND bar=:a",
+			"queryNamedArgs": queryNamedArgs{
+				dict: map[string][]int{
+					"b": []int{0},
+				},
+				total: 1,
+			},
+		},
+		map[string]interface{}{
+			"query":         "SELECT * FROM Foo WHERE id=:b AND bar=:a:",
+			"expectedQuery": "SELECT * FROM Foo WHERE id=:b AND bar=?",
+			"queryNamedArgs": queryNamedArgs{
+				dict: map[string][]int{
+					"a": []int{0},
+				},
+				total: 1,
+			},
+		},
+		map[string]interface{}{
+			"query":         "SELECT * FROM Foo WHERE id=:b: AND bar=a:",
+			"expectedQuery": "SELECT * FROM Foo WHERE id=? AND bar=a:",
+			"queryNamedArgs": queryNamedArgs{
+				dict: map[string][]int{
+					"b": []int{0},
+				},
+				total: 1,
+			},
+		},
+		map[string]interface{}{
+			"query":         "SELECT * FROM Foo WHERE id=b: AND bar=:a:",
+			"expectedQuery": "SELECT * FROM Foo WHERE id=b: AND bar=?",
+			"queryNamedArgs": queryNamedArgs{
+				dict: map[string][]int{
+					"a": []int{0},
+				},
+				total: 1,
+			},
+		},
 	}
 
 	for _, c := range cases {

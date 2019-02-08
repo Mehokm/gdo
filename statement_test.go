@@ -2,6 +2,7 @@ package gdo
 
 import (
 	"database/sql"
+	"errors"
 	"math/rand"
 	"testing"
 
@@ -15,6 +16,8 @@ func TestNewStatement(t *testing.T) {
 		map[string]interface{}{"query": "SELECT * FROM Foo WHERE 1=?", "isParameterized": false},
 		map[string]interface{}{"query": "SELECT * FROM Foo WHERE 1=:id:", "isParameterized": true},
 		map[string]interface{}{"query": "SELECT * FROM Foo WHERE 1 = :id:", "isParameterized": true},
+		map[string]interface{}{"query": "SELECT * FROM Foo WHERE 1=id:", "isParameterized": false},
+		map[string]interface{}{"query": "SELECT * FROM Foo WHERE 1 = :id", "isParameterized": false},
 	}
 
 	var namesArgs []sql.NamedArg
@@ -41,21 +44,37 @@ func TestProcessStatement(t *testing.T) {
 			"query":         "SELECT * FROM Foo WHERE id = :a: AND bar = :b:",
 			"expectedQuery": "SELECT * FROM Foo WHERE id = ? AND bar = ?",
 			"args":          []interface{}{a, b},
+			"error":         nil,
 		},
 		map[string]interface{}{
 			"query":         "SELECT * FROM Foo WHERE id = :b: AND bar = :a:",
 			"expectedQuery": "SELECT * FROM Foo WHERE id = ? AND bar = ?",
 			"args":          []interface{}{b, a},
+			"error":         nil,
 		},
 		map[string]interface{}{
 			"query":         "SELECT * FROM Foo WHERE id=:a: AND bar=:b:",
 			"expectedQuery": "SELECT * FROM Foo WHERE id=? AND bar=?",
 			"args":          []interface{}{a, b},
+			"error":         nil,
 		},
 		map[string]interface{}{
 			"query":         "SELECT * FROM Foo WHERE id=:b: AND bar=:a:",
 			"expectedQuery": "SELECT * FROM Foo WHERE id=? AND bar=?",
 			"args":          []interface{}{b, a},
+			"error":         nil,
+		},
+		map[string]interface{}{
+			"query":         "SELECT * FROM Foo WHERE id=:a AND bar=:b:",
+			"expectedQuery": "SELECT * FROM Foo WHERE id=:a AND bar=?",
+			"args":          []interface{}{b},
+			"error":         errors.New("gdo: you have a parameter mismatch"),
+		},
+		map[string]interface{}{
+			"query":         "SELECT * FROM Foo WHERE id=:b AND bar=:a:",
+			"expectedQuery": "SELECT * FROM Foo WHERE id=:b AND bar=?",
+			"args":          []interface{}{a},
+			"error":         errors.New("gdo: you have a parameter mismatch"),
 		},
 	}
 
@@ -72,8 +91,13 @@ func TestProcessStatement(t *testing.T) {
 
 		newStmt, err := processStatment(stmt)
 
-		assert.Equal(t, expected, newStmt)
-		assert.NoError(t, err)
+		if err != nil {
+			assert.Equal(t, c["error"], err)
+			assert.Nil(t, newStmt)
+		} else {
+			assert.Equal(t, expected, newStmt)
+			assert.NoError(t, err)
+		}
 	}
 }
 
