@@ -69,6 +69,8 @@ func (stmt *Statement) lastExecutedQuery() string {
 			switch arg.(type) {
 			case int:
 				s = strconv.Itoa(arg.(int))
+			case int64:
+				s = strconv.Itoa(int(arg.(int64)))
 			case float32:
 				s = strconv.FormatFloat(float64(arg.(float32)), 'f', -1, 32)
 			case float64:

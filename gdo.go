@@ -197,19 +197,20 @@ func doExecCtx(fn execCtxFunc, ctx context.Context, s *Statement) (ExecResult, e
 }
 
 func checkIsParameterized(query string) bool {
-	indexFirst := strings.Index(query, ":")
+	var paramCount []bool
 
-	if indexFirst < 0 {
-		return false
-	}
-
-	for i := indexFirst + 1; i < len(query); i++ {
-		if unicode.IsSpace(rune(query[i])) {
-			return false
-		} else if query[i] == ':' {
-			return true
+	for i, r := range query {
+		if r == ':' {
+			for j := i + 1; j < len(query); j++ {
+				if query[j] == ':' {
+					paramCount = append(paramCount, true)
+					break
+				} else if unicode.IsSpace(rune(query[j])) {
+					break
+				}
+			}
 		}
 	}
 
-	return false
+	return len(paramCount) > 0
 }

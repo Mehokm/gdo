@@ -76,3 +76,38 @@ func TestProcessStatement(t *testing.T) {
 		assert.NoError(t, err)
 	}
 }
+
+func TestLastExecutedQuery(t *testing.T) {
+	a := string(rand.Intn(255))
+	b := string(rand.Intn(255))
+
+	cases := []map[string]interface{}{
+		map[string]interface{}{
+			"query":         "SELECT * FROM Foo WHERE id = :a: AND bar = :b:",
+			"expectedQuery": "SELECT * FROM Foo WHERE id = '" + a + "' AND bar = '" + b + "'",
+		},
+		map[string]interface{}{
+			"query":         "SELECT * FROM Foo WHERE id = :b: AND bar = :a:",
+			"expectedQuery": "SELECT * FROM Foo WHERE id = '" + b + "' AND bar = '" + a + "'",
+		},
+		map[string]interface{}{
+			"query":         "SELECT * FROM Foo WHERE id=:a: AND bar=:b:",
+			"expectedQuery": "SELECT * FROM Foo WHERE id='" + a + "' AND bar='" + b + "'",
+		},
+		map[string]interface{}{
+			"query":         "SELECT * FROM Foo WHERE id=:b: AND bar=:a:",
+			"expectedQuery": "SELECT * FROM Foo WHERE id='" + b + "' AND bar='" + a + "'",
+		},
+	}
+
+	for _, c := range cases {
+		stmt := NewStatement(c["query"].(string))
+		stmt.BindNamedArg(sql.Named("a", a))
+		stmt.BindNamedArg(sql.Named("b", b))
+
+		newStmt, err := processStatment(stmt)
+
+		assert.Equal(t, c["expectedQuery"].(string), newStmt.lastExecutedQuery())
+		assert.NoError(t, err)
+	}
+}
