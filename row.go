@@ -37,7 +37,13 @@ func (r Row) Int(col string) (int, error) {
 	case float64:
 		v = int(val.(float64))
 	case []byte:
-		v = int(val.([]byte)[0])
+		s, err := strconv.Atoi(string(val.([]byte)))
+
+		v = s
+
+		if err != nil {
+			v = 0
+		}
 	default:
 		return 0, ErrCannotConvert
 	}
