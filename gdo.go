@@ -3,8 +3,6 @@ package gdo
 import (
 	"context"
 	"database/sql"
-	"index/suffixarray"
-	"sort"
 	"strings"
 	"unicode"
 )
@@ -71,43 +69,15 @@ func (g GDO) prepareContext(ctx context.Context, query string) (*PreparedStateme
 	isParameterized := checkIsParameterized(replacedSQL)
 
 	if isParameterized {
-		namedArgMap := make(map[string][]int)
-
 		var toReplace []string
 
-		index := suffixarray.New([]byte(query))
-		inds := index.Lookup([]byte(":"), -1)
+		qna = getQueryParameters(query)
 
-		sort.Ints(inds)
-
-		// TODO: should check if an even amount
-		// throw error about malformed parameters
-
-		l := len(query)
-		k := 0
-		for i := 0; i < len(inds)-1; i += 2 {
-			j, jj := inds[i], inds[i+1]
-
-			var argName string
-			if jj < l {
-				argName = query[j+1 : jj]
-			} else {
-				argName = query[j+1:]
-			}
-
-			namedArgMap[argName] = append(namedArgMap[argName], k)
-
-			toReplace = append(toReplace, delim+argName+delim, "?")
-
-			k++
+		for key := range qna.dict {
+			toReplace = append(toReplace, delim+key+delim, "?")
 		}
 
 		replacedSQL = strings.NewReplacer(toReplace...).Replace(query)
-
-		qna = queryNamedArgs{
-			dict:  namedArgMap,
-			total: len(inds) / 2, // assume even because double delim
-		}
 	}
 
 	ps, err := g.DB.PrepareContext(ctx, replacedSQL)
@@ -213,4 +183,31 @@ func checkIsParameterized(query string) bool {
 	}
 
 	return len(paramCount) > 0
+}
+
+func getQueryParameters(query string) queryNamedArgs {
+	qnp := queryNamedArgs{
+		dict: make(map[string][]int),
+	}
+
+	var order int
+	for i, r := range query {
+		if r == ':' {
+			for j, start := i+1, i+1; j < len(query); j++ {
+				if query[j] == ':' {
+					qnp.dict[query[start:j]] = append(qnp.dict[query[start:j]], order)
+
+					order++
+					break
+				} else if unicode.IsSpace(rune(query[j])) {
+					break
+				}
+			}
+		}
+	}
+
+	// keeping track of the order also keeps the total at the end
+	qnp.total = order
+
+	return qnp
 }

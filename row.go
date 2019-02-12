@@ -42,7 +42,7 @@ func (r Row) Int(col string) (int, error) {
 		v = s
 
 		if err != nil {
-			v = 0
+			return 0, ErrCannotConvert
 		}
 	default:
 		return 0, ErrCannotConvert
