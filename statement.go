@@ -12,10 +12,10 @@ import (
 var ErrParameterMismatch = errors.New("gdo: you have a parameter mismatch")
 
 type Statement struct {
-	query          string
-	namedArgs      []sql.NamedArg
-	args           []interface{}
-	isParamertized bool
+	query           string
+	namedArgs       []sql.NamedArg
+	args            []interface{}
+	isParameterized bool
 }
 
 // NewStatement returns a Statement
@@ -23,13 +23,13 @@ func NewStatement(query string) *Statement {
 	var namedArgs []sql.NamedArg
 	var args []interface{}
 
-	isParamertized := !strings.Contains(query, "?")
+	isParameterized := checkIsParameterized(query)
 
 	return &Statement{
-		query:          query,
-		namedArgs:      namedArgs,
-		args:           args,
-		isParamertized: isParamertized,
+		query:           query,
+		namedArgs:       namedArgs,
+		args:            args,
+		isParameterized: isParameterized,
 	}
 }
 
@@ -69,6 +69,8 @@ func (stmt *Statement) lastExecutedQuery() string {
 			switch arg.(type) {
 			case int:
 				s = strconv.Itoa(arg.(int))
+			case int64:
+				s = strconv.Itoa(int(arg.(int64)))
 			case float32:
 				s = strconv.FormatFloat(float64(arg.(float32)), 'f', -1, 32)
 			case float64:

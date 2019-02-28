@@ -7,9 +7,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Mehokm/gdo"
+	"github.com/go-sql-driver/mysql"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/Mehokm/gdo"
 )
 
 func main() {
@@ -28,10 +28,31 @@ func main() {
 	doUpdate(db)
 
 	doSelect(db)
+	doSimpleSelect(db)
 	doSelectRow(db)
 
 	doPrepare(db)
 	doPrepare2(db)
+
+	doSelectTyped(db)
+}
+
+func doSimpleSelect(db *sql.DB) {
+	g := gdo.New(db)
+
+	stmt := gdo.NewStatement("SELECT * FROM Test")
+	stmt.BindNamedArg(sql.Named("test", "foo"))
+
+	r, err := g.Query(stmt)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	r.FetchRows()
+
+	fmt.Println(r.LastExecutedQuery())
 }
 
 func doSelect(db *sql.DB) {
@@ -150,7 +171,7 @@ func doUpdate(db *sql.DB) {
 
 	stmt := gdo.NewStatement("UPDATE Test SET `IntCol`=:intCol: WHERE `id`=:id:")
 	stmt.BindNamedArgs([]sql.NamedArg{
-		sql.Named("intCol", 10.10),
+		sql.Named("intCol", 12),
 		sql.Named("id", 1),
 	})
 
@@ -193,7 +214,7 @@ func doPrepare(db *sql.DB) {
 func doPrepare2(db *sql.DB) {
 	g := gdo.New(db)
 
-	p, _ := g.Prepare("SELECT * FROM Test WHERE `IntCol` <> ? AND `StringCol` = ? AND `StringCol` <> ?")
+	p, _ := g.Prepare("SELECT *, 'will this work?' AS test FROM Test WHERE `IntCol` <> ? AND `StringCol` = ? AND `StringCol` <> ?")
 
 	p.BindArgs([]interface{}{
 		11,
@@ -205,8 +226,46 @@ func doPrepare2(db *sql.DB) {
 
 	fmt.Println(p.QueryRow().FetchRow().String("StringCol"))
 	fmt.Println(p.QueryRow().FetchRow().Int("IntCol"))
+	fmt.Println(p.QueryRow().FetchRow().String("test"))
 
 	p.Close()
+}
+
+type Test struct {
+	Id             int
+	IntCol         sql.NullInt64
+	StringCol      sql.NullString
+	Bool           sql.NullBool
+	AnotherStrCol  sql.NullString
+	Blob           []byte `gdo:"BlobCol"`
+	Decimalcol     sql.NullFloat64
+	Date           mysql.NullTime `gdo:"DateCol"`
+	EnumCol        *string
+	AnotherDateCol mysql.NullTime
+}
+
+func doSelectTyped(db *sql.DB) {
+	g := gdo.New(db)
+
+	stmt := gdo.NewStatement("SELECT * FROM Test")
+
+	r, err := g.Query(stmt)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	result, err := r.FetchRowsTyped(&Test{})
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	s := result.([]Test)
+
+	fmt.Println(s)
 }
 
 func randomString() string {

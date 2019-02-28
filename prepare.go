@@ -47,7 +47,7 @@ func doPreparedQueryCtx(ctx context.Context, fn queryCtxPreparedFunc, ps *Prepar
 	var rows *sql.Rows
 	var err error
 
-	if ps.isParamertized && len(ps.namedArgs) > 0 {
+	if ps.isParameterized && len(ps.namedArgs) > 0 {
 		ps, err = processPreparedStatement(ps) // get args for query
 
 		if err != nil {
@@ -89,7 +89,7 @@ func doPreparedExecCtx(ctx context.Context, fn execCtxPreparedFunc, ps *Prepared
 	var result sql.Result
 	var err error
 
-	if ps.isParamertized && len(ps.namedArgs) > 0 {
+	if ps.isParameterized && len(ps.namedArgs) > 0 {
 		ps, err = processPreparedStatement(ps) // get args for query
 
 		if err != nil {

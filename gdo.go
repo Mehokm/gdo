@@ -3,9 +3,8 @@ package gdo
 import (
 	"context"
 	"database/sql"
-	"index/suffixarray"
-	"sort"
 	"strings"
+	"unicode"
 )
 
 const delim = ":"
@@ -67,46 +66,18 @@ func (g GDO) prepareContext(ctx context.Context, query string) (*PreparedStateme
 	replacedSQL := query
 	var qna queryNamedArgs
 
-	isParamertized := !strings.Contains(replacedSQL, "?")
+	isParameterized := checkIsParameterized(replacedSQL)
 
-	if isParamertized {
-		namedArgMap := make(map[string][]int)
-
+	if isParameterized {
 		var toReplace []string
 
-		index := suffixarray.New([]byte(query))
-		inds := index.Lookup([]byte(":"), -1)
+		qna = getQueryParameters(query)
 
-		sort.Ints(inds)
-
-		// TODO: should check if an even amount
-		// throw error about malformed parameters
-
-		l := len(query)
-		k := 0
-		for i := 0; i < len(inds)-1; i += 2 {
-			j, jj := inds[i], inds[i+1]
-
-			var argName string
-			if jj < l {
-				argName = query[j+1 : jj]
-			} else {
-				argName = query[j+1:]
-			}
-
-			namedArgMap[argName] = append(namedArgMap[argName], k)
-
-			toReplace = append(toReplace, delim+argName+delim, "?")
-
-			k++
+		for key := range qna.dict {
+			toReplace = append(toReplace, delim+key+delim, "?")
 		}
 
 		replacedSQL = strings.NewReplacer(toReplace...).Replace(query)
-
-		qna = queryNamedArgs{
-			dict:  namedArgMap,
-			total: len(inds) / 2, // assume even because double delim
-		}
 	}
 
 	ps, err := g.DB.PrepareContext(ctx, replacedSQL)
@@ -118,10 +89,10 @@ func (g GDO) prepareContext(ctx context.Context, query string) (*PreparedStateme
 	return &PreparedStatement{
 		Stmt: ps,
 		Statement: &Statement{
-			query:          replacedSQL,
-			namedArgs:      make([]sql.NamedArg, 0),
-			args:           make([]interface{}, 0),
-			isParamertized: isParamertized,
+			query:           replacedSQL,
+			namedArgs:       make([]sql.NamedArg, 0),
+			args:            make([]interface{}, 0),
+			isParameterized: isParameterized,
 		},
 		queryNamedArgs: qna,
 	}, nil
@@ -131,7 +102,7 @@ func doQueryCtx(fn queryCtxFunc, ctx context.Context, s *Statement) (QueryResult
 	var rows *sql.Rows
 	var err error
 
-	if s.isParamertized && len(s.namedArgs) > 0 {
+	if s.isParameterized && len(s.namedArgs) > 0 {
 		s, err = processStatment(s)
 
 		if err != nil {
@@ -173,7 +144,7 @@ func doExecCtx(fn execCtxFunc, ctx context.Context, s *Statement) (ExecResult, e
 	var result sql.Result
 	var err error
 
-	if s.isParamertized && len(s.namedArgs) > 0 {
+	if s.isParameterized && len(s.namedArgs) > 0 {
 		s, err = processStatment(s)
 
 		if err != nil {
@@ -193,4 +164,50 @@ func doExecCtx(fn execCtxFunc, ctx context.Context, s *Statement) (ExecResult, e
 		},
 		Result: result,
 	}, nil
+}
+
+func checkIsParameterized(query string) bool {
+	var paramCount []bool
+
+	for i, r := range query {
+		if r == ':' {
+			for j := i + 1; j < len(query); j++ {
+				if query[j] == ':' {
+					paramCount = append(paramCount, true)
+					break
+				} else if unicode.IsSpace(rune(query[j])) {
+					break
+				}
+			}
+		}
+	}
+
+	return len(paramCount) > 0
+}
+
+func getQueryParameters(query string) queryNamedArgs {
+	qnp := queryNamedArgs{
+		dict: make(map[string][]int),
+	}
+
+	var order int
+	for i, r := range query {
+		if r == ':' {
+			for j, start := i+1, i+1; j < len(query); j++ {
+				if query[j] == ':' {
+					qnp.dict[query[start:j]] = append(qnp.dict[query[start:j]], order)
+
+					order++
+					break
+				} else if unicode.IsSpace(rune(query[j])) {
+					break
+				}
+			}
+		}
+	}
+
+	// keeping track of the order also keeps the total at the end
+	qnp.total = order
+
+	return qnp
 }
